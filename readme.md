@@ -5,9 +5,9 @@ IDA-FFxiv-Opcodes
 如何运行
 ---
 
-* ida 内执行 `entrance.py  `
-* 命令行传递二进制以及idat.exe的路径使用 `main.py  `
-* TODO: 使用ida的外部库功能
+* ida 内执行 `entrance.py`  
+* 命令行传递二进制以及idat.exe的路径使用 `main.py`  
+* 从安装了 idalib 的 python 环境 调用 `use_idalib.py`  
 
 输出
 ---
