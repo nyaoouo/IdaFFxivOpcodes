@@ -139,7 +139,10 @@ def _():
 @opcode(0x10031)
 def _():
     pno = {}
-    pno[0x10030] = pattern_scanner.find_val("81 7b ? <? ? ? ?> 75 ? 48 ? ? ? ? 83 ? ?")
+    try:
+        pno[0x10030] = pattern_scanner.find_val("81 7b ? <? ? ? ?> 75 ? 48 ? ? ? ? 83 ? ?")
+    except KeyError:
+        pno[0x10030] = pattern_scanner.find_val("83 7b ? <?> 75 ? 48 ? ? ? ? 83 ? ? 7d ? ") # handle when opcode is lower than 0x7f
     pno[0x10031] = sorted(find_zone_down_switch_values(get_func(
         pattern_scanner.find_address("89 4c 24 ? 48 ? ? ? 48 89 4c 24 ? 48 ? ? ? 0f ? ?")
     ).start_ea).difference(pno[0x10030]))
