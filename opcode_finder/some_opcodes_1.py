@@ -697,7 +697,10 @@ def _():
 @opcode(0x1002D)
 @opcode(0x1002E)
 def _():
-    ea = pattern_scanner.find_address("81 7b ? * * * * 0f 85 ? ? ? ? 8b ? ? 81 ? ? ? ? ?")
+    try:
+        ea = pattern_scanner.find_address("81 7b ? * * * * 0f 85 ? ? ? ? 8b ? ? 81 ? ? ? ? ?")
+    except KeyError:
+        ea = pattern_scanner.find_address("83 7b ? ? 0f 85 ? ? ? ? 8b ? ? 81 ? ? ? ? ? ")  # handle when opcode is lower than 0x7f
     pno = {
         0x1002D: [get_operand_value(ea, 1)],
     }
