@@ -98,18 +98,68 @@ def _():
 
 
 @opcode(range(0x10029, 0x1002B + 1))
+@opcode(0x10072)
 def _():
-    def func_size(ea):
-        return find_func_end(ea) - ea
+    special_type_func = pattern_scanner.find_address("44 ? ? ? 45 ? ? 44 ? ? b8 ? ? ? ? ")
+    base_func = pattern_scanner.find_address("40 ? 41 ? 41 ? 41 ? 48 ? ? ? 8b ? 4c ? ?")
+
+    class OperandLine(typing.NamedTuple):
+        ea: int
+        insn: str
+        op1: int
+        op2: int
+        val1: int
+        val2: int
+
+        a = property(lambda self: (self.op1, self.val1))
+        b = property(lambda self: (self.op2, self.val2))
+
+    get_op = lambda ea: OperandLine(
+        ea,
+        print_insn_mnem(ea),
+        get_operand_type(ea, 0),
+        get_operand_type(ea, 1),
+        get_operand_value(ea, 0),
+        get_operand_value(ea, 1)
+    )
+
+    def is_calling_special_type_func(ea):
+        for xref in XrefsFrom(ea, 0):
+            if xref.type in (fl_JF, fl_JN, fl_CF, fl_CN) and get_operand_value(xref.frm, 0) == special_type_func:
+                return True
+        return False
+
+    def find_types(func_ea):
+        func_ = get_func(func_ea)
+        ea = func_.start_ea
+        end = func_.end_ea
+        res = set()
+
+        last_type = 0
+        while ea < end:
+            line = get_op(ea)
+            if line.a == (o_reg, 0x12) and line.op2 == o_imm:
+                last_type = line.val2
+            elif is_calling_special_type_func(ea):
+                res.add(last_type)
+            ea = next_head(ea, BADADDR)
+
+        return sorted(res)
 
     pno = {}
-    pno[0x1002B], pno[0x1002A] = map(sorted, map(find_zone_down_switch_values, sorted(
-        pattern_scanner.find_addresses("48 89 5c 24 ? 57 48 ? ? ? 49 ? ? 48 ? ? 49 ? ? ? e8"),
-        key=func_size
-    )))
-    pno[0x10029] = sorted(find_zone_down_switch_values(
-        pattern_scanner.find_val("e8 * * * * 0f ? ? 48 ? ? ? ? ? ? 84 ? 74 ?")[0]
-    ).difference(pno[0x1002B]).difference(pno[0x1002A]))
+    for func in (xref.frm for xref in XrefsTo(base_func, 0) if xref.type in (fl_JF, fl_JN, fl_CF, fl_CN)):
+        _types = find_types(func)
+        if _types == []:
+            k = 0x10029
+        elif _types == [1, 2, 3]:
+            k = 0x1002A
+        elif _types == [4, 5]:
+            k = 0x1002B
+        elif _types == [6, 7, 8]:
+            k = 0x10072
+        else:
+            raise Exception(f'Unknown types {_types}')
+        pno[k] = find_zone_down_switch_values(func)
     return pno
 
 
@@ -142,7 +192,7 @@ def _():
     try:
         pno[0x10030] = pattern_scanner.find_val("81 7b ? <? ? ? ?> 75 ? 48 ? ? ? ? 83 ? ?")
     except KeyError:
-        pno[0x10030] = pattern_scanner.find_val("83 7b ? <?> 75 ? 48 ? ? ? ? 83 ? ? 7d ? ") # handle when opcode is lower than 0x7f
+        pno[0x10030] = pattern_scanner.find_val("83 7b ? <?> 75 ? 48 ? ? ? ? 83 ? ? 7d ? ")  # handle when opcode is lower than 0x7f
     pno[0x10031] = sorted(find_zone_down_switch_values(get_func(
         pattern_scanner.find_address("89 4c 24 ? 48 ? ? ? 48 89 4c 24 ? 48 ? ? ? 0f ? ?")
     ).start_ea).difference(pno[0x10030]))
@@ -250,14 +300,14 @@ def _():
     pno[0x10027] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 83 3d ? ? ? ? ? 41 ? ? ? 48"
     )))
-    pno[0x10025] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "48 89 5c 24 ? 48 89 6c 24 ? 56 48 ? ? ? 83 3d ? ? ? ? ? 41 ? ? ? 48 ? ? 8b ? 0f 84 ? ? ? ? 48 ? ? ? 48 89 7c 24"
-    )))
+    pno[0x10025] = sorted(find_zone_down_switch_values(get_func(pattern_scanner.find_address(
+        "e8 ? ? ? ? 80 ? ? 48 ? ? 0f 84 ? ? ? ?"
+    )).start_ea))
     pno[0x10026] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "48 89 6c 24 ? 48 89 74 24 ? 57 48 ? ? ? 83 3d ? ? ? ? ? 41 ? ? ? 48 ? ? 8b ?"
     )))
     pno[0x10024] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "48 ? ? 55 57 41 ? 48 ? ? ? 83 3d"
+        "4c 89 70 ? 44 ? ? 89 74 24 ?"
     )).difference(
         pno[0x10027]
     ).difference(
@@ -272,13 +322,15 @@ def _():
 @opcode(0x1006F)
 def _():
     pno = {}
-    may_be_expand_funcs = {get_func(xref.frm).start_ea for xref in XrefsTo(pattern_scanner.find_address("48 89 5c 24 ? 48 89 6c 24 ? 48 89 74 24 ? 48 89 7c 24 ? 41 ? 48 ? ? ? bf ? ? ? ? c6 81")) if xref.type in (fl_JF, fl_JN, fl_CF, fl_CN)}
+    try:
+        extend_status = pattern_scanner.find_address("48 89 74 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90 ? ? ? ?")  # 7.1
+    except KeyError:
+        extend_status = pattern_scanner.find_address("48 89 5c 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90 ? ? ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90 ? ? ? ? 48 ? ? 48 ? ? e8 ? ? ? ? 48 ? ? 48 ? ?")  # 7.0
     status_funcs = set(pattern_scanner.find_addresses("48 89 5c 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90"))
-    assert len(status_funcs) == 2, 'status_funcs len != 2'
-    normal_status_func = status_funcs.difference(may_be_expand_funcs)
+    normal_status_func = status_funcs.difference({extend_status})
     assert len(normal_status_func) == 1, 'normal_status_func len != 1'
     pno[0x10043] = sorted(find_zone_down_switch_values(next(iter(normal_status_func))))
-    pno[0x1006F] = sorted(find_zone_down_switch_values(next(iter(status_funcs.intersection(may_be_expand_funcs)))))
+    pno[0x1006F] = sorted(find_zone_down_switch_values(extend_status))
     return pno
 
 
@@ -302,19 +354,16 @@ def _():
 
 @opcode(0x10057)
 def _():
-    proxies_offset, = pattern_scanner.find_val(
-        '48 ? ? 48 ? ? ? 48 ? ? ff 90 ? ? ? ? 84 ? 0f 84 ? ? ? ? 80 bb ? ? ? ? ? 0f 84 ? ? ? ? 48 ? ? ? 48 ? ? ff 90 ? ? ? ? 33 ? 48 ? ? ? ? ? ? 48 ? ? 75 ? 48 ? ? <? ? ? ?>'
-    )
-    item_search_offset = pattern_scanner.find_val('48 ? ? <? ? ? ?> 48 ? ? ? 48 ? ? ff 90 ? ? ? ? 4c ? ? ? ? ? ? 33 ? 33')[0] - proxies_offset
+    idx, = pattern_scanner.find_val('ba <? ? ? ?> e8 ? ? ? ? 48 ? ? ? 48 89 86 ? ? ? ?')
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         f"40 ? 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? e8 ? ? ? ? 48 ? ? 74 ? 4c ? ? 48 ? ? 41 ff 90 ? ? ? ? 48 ? ? ba "
-        f"{(item_search_offset // 8).to_bytes(4, 'little').hex(' ')} e8 ? ? ? ? 48 ? ? 74 ? 4c ? ? 48"
+        f"{idx.to_bytes(4, 'little').hex(' ')} e8 ? ? ? ? 48 ? ? 74 ? 4c ? ? 48"
     )))
 
 
 @opcode(0x10052)
 def _():
-   return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
+    return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "40 ? 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? e8 ? ? ? ? 48 ? ? 74 ? 4c ? ? 48 ? ? 41 ff 90 ? ? ? ? 48 ? ? ba ? ? ? ? e8 ? ? ? ? 48 ? ? 74 ? 4c ? ? 41"
     )))
 
@@ -491,9 +540,9 @@ def _():
 
 @opcode(0x10063)
 def _():
-    return sorted(find_zone_down_switch_values(pattern_scanner.find_val(
-        "48 ? ? 4c ? ? ? 48 ? ? ? ? ? ? e9 * * * *"
-    )[0]))
+    return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
+        "48 89 5c 24 ? 48 89 6c 24 ? 48 89 74 24 ? 48 89 7c 24 ? 41 ? 48 ? ? ? 48 ? ? ? ? ? ? 45 ? ? 49 ? ?"
+    )))
 
 
 @opcode(0x10015)
@@ -527,14 +576,14 @@ def _():
 @opcode(0x1004A)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "48 89 5c 24 ? 55 56 57 41 ? 41 ? 41 ? 41 ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? 48 ? ? ? ? ? ? 41"
+        "48 89 84 24 ? ? ? ? 48 ? ? ? ? ? ? 41 ? ? ? 88 5c 24 ?"
     )))
 
 
 @opcode(0x1005A)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "48 89 5c 24 ? 55 56 57 41 ? 41 ? 41 ? 41 ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? 48 ? ? ? ? ? ? 41"
+        "48 ? ? ? ? ? ? 41 ? ? ? 88 5c 24 ? 48 ? ?"
     )))
 
 
@@ -571,7 +620,7 @@ def _():
 @opcode(0x10064)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "44 ? ? 4c ? ? ? 48 ? ? ? 48 ? ? ? ? ? ? e9"
+        "44 ? ? 4c ? ? ? 48 ? ? ? 48 ? ? ? ? ? ? e9 <* * * *:40>"
     )))
 
 
@@ -613,7 +662,7 @@ def _():
 @opcode(0x1000B)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "40 ? 41 ? 48 ? ? ? 0f ? ? ? ? ? ? 4c"
+        "66 89 47 ? 48 89 47 ? 8b ?"
     )))
 
 
@@ -690,7 +739,7 @@ def _():
 @opcode(0x1002C)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "48 ? ? ? 48 ? ? ? ? ? ? 41 ? ? ? ? 4c ? ? ? ? ? ? 83"
+        "4c ? ? 55 41 ? 49 ? ? ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 45 ? 49 89 5b ? 45 ? ?"
     )))
 
 
@@ -812,9 +861,9 @@ def _():
 
 @opcode(0x10048)
 def _():
-    return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "48 89 5c 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 44 24 ? 0f ? ? ? 48 ? ? 8b"
-    )))
+    return sorted(find_zone_down_switch_values(get_func(pattern_scanner.find_address(
+        "e8 ? ? ? ? 84 ? 74 ? 33 ? 89 05 ? ? ? ?"
+    )).start_ea))
 
 
 @opcode(0x1005B)
@@ -994,7 +1043,7 @@ init_send_funcs()
 @opcode(range(0x20012, 0x20019 + 1))
 def _():
     pno = {}
-    for v, _, n, _ in find_event_packets(pattern_scanner.find_val("e8 * * * * 44 08 a6")[0], send_game_packet):
+    for v, _, n, _ in find_event_packets(pattern_scanner.find_val("45 ? ? ? 40 88 7c 24 ? e8 * * * *")[0], send_game_packet):
         k = {
             2: 0x20012,
             4: 0x20013,
@@ -1137,18 +1186,20 @@ def _():
 
 @opcode(0x20010)
 def _():
-    return analyze_send_function(
-        pattern_scanner.find_val("66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * * 8b ? ? ? ? ? ?")[0],
-        send_game_packet
-    )
+    try:
+        a, = pattern_scanner.find_val("45 ? ? 66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * *")  # 7.1
+    except KeyError:
+        a, = pattern_scanner.find_val("66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * * 8b ? ? ? ? ? ?")  # 7.0
+    return analyze_send_function(a, send_game_packet)
 
 
 @opcode(0x20001)
 def _():
-    return analyze_send_function(
-        pattern_scanner.find_val("66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * * e9")[0],
-        send_game_packet
-    )
+    try:
+        a, = pattern_scanner.find_val("66 89 4c 24 ? 0f ? ? 48 ? ? ? ? e8 * * * *")  # 7.1
+    except KeyError:
+        a, = pattern_scanner.find_val("66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * * e9")  # 7.0
+    return analyze_send_function(a, send_game_packet)
 
 
 @opcode(0x2001E)
@@ -1170,7 +1221,8 @@ def _():
 @opcode(0x20011)
 def _():
     return analyze_send_function(
-        pattern_scanner.find_val("44 89 25 ? ? ? ? e8 * * * *")[0],
+        # pattern_scanner.find_val("44 89 25 ? ? ? ? e8 * * * *")[0],
+        pattern_scanner.find_address("48 ? ? ? ? ? ? 48 ? ? 85 ? 0f 88 ? ? ? ? 3b ? ? ? ? ?"),  # 7.1
         send_game_packet
     )
 
@@ -1193,16 +1245,21 @@ def _():
 
 @opcode(0x20006)
 def _():
-    return analyze_send_function(
-        pattern_scanner.find_val("45 ? ? 88 44 24 ? 48 ? ? e8 * * * * eb ?")[0],
-        send_game_packet
-    )
+    try:
+        a, = pattern_scanner.find_val("66 89 44 24 ? 48 ? ? e8 * * * * eb ?")  # 7.1
+    except KeyError:
+        a, = pattern_scanner.find_val("45 ? ? 88 44 24 ? 48 ? ? e8 * * * * eb ?")  # 7.0
+    return analyze_send_function(a, send_game_packet)
 
 
 @opcode(0x20005)
 def _():
     return analyze_send_function(
-        pattern_scanner.find_val("40 88 7c 24 ? 48 ? ? ? ? 48 ? ? e8 * * * *")[0],
+        # pattern_scanner.find_val("40 88 7c 24 ? 48 ? ? ? ? 48 ? ? e8 * * * *")[0], # 7.0
+        # pattern_scanner.find_val("66 89 44 24 ? e8 ? ? ? ? 45 ? ? 66 89 44 24 ? 48 ? ? ? ? 48 ? ? e8 * * * *")[0], # 7.1
+        pattern_scanner.find_address(
+            "48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? 48 ? ? 41 ? ? 48 ? ? ? ? ? ? 48 ? ? e8 ? ? ? ? 8b ? ?"
+        ),
         send_game_packet
     )
 
