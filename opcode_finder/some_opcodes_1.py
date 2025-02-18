@@ -295,6 +295,7 @@ def _():
 
 
 @opcode(range(0x10024, 0x10027 + 1))
+@opcode(0x10073)
 def _():
     pno = {}
     pno[0x10027] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
@@ -306,6 +307,9 @@ def _():
     pno[0x10026] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "48 89 6c 24 ? 48 89 74 24 ? 57 48 ? ? ? 83 3d ? ? ? ? ? 41 ? ? ? 48 ? ? 8b ?"
     )))
+    pno[0x10073] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
+        "8b ? 48 ? ? ? ? ? ? e8 ? ? ? ? 80 ? ? 48 ? ? 74 ? 48 ? ?"
+    )))
     pno[0x10024] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "4c 89 70 ? 44 ? ? 89 74 24 ?"
     )).difference(
@@ -314,6 +318,8 @@ def _():
         pno[0x10025]
     ).difference(
         pno[0x10026]
+    ).difference(
+        pno[0x10073]
     ))
     return pno
 
