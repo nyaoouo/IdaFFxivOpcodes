@@ -38,10 +38,10 @@ def _():
 def _():
     pno = {}
     pno[0x10006], pno[0x10007], pno[0x10008], pno[0x10009] = map(sorted, map(find_zone_down_switch_values, sorted(
-        pattern_scanner.find_addresses('48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 44 24 ? 48 ? ? 8b ? 8b'),
-        key=lambda ea: get_operand_value(ea, 1)
+        pattern_scanner.find_addresses('48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 48 ? ? 8b ? 8b ? 48 ? ? ? ? ? ? e8 ? ? ? ? 48 ? ? 48 ? ? 74 ? 48 ? ? ? ? ? ?'),
+        key=lambda ea: get_operand_value(ea + 0x2a, 1)
     )))
-    pno[0x10005] = sorted(find_zone_down_switch_values(pattern_scanner.find_address("48 89 5c 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 44 24 ? 48 ? ? 8b ? 8b ?")))
+    pno[0x10005] = sorted(find_zone_down_switch_values(pattern_scanner.find_address("48 89 5c 24 ? 57 48 ? ? ? 48 ? ? 8b ? 8b ? 48 ? ? ? ? ? ? e8 ? ? ? ? 48 ? ? 74 ? 4c ? ? ? 48 ? ?")))
     return pno
 
 
@@ -53,7 +53,7 @@ def _():
     pno[0x1002F] = trace_small_switch(ea),
     pno[0x30002] = sorted(
         v for v in find_zone_down_switch_values(
-            pattern_scanner.find_address('48 89 74 24 ? 57 48 ? ? ? ? ? ? 44 ? ? ? ? 48')
+            pattern_scanner.find_address('44 ? ? ? ? 48 ? ? 8b ? 41 ? ? ? ? ? ? 74 ? ')
         ) if v not in pno[0x1002F]
     )
     return pno
@@ -194,7 +194,7 @@ def _():
     except KeyError:
         pno[0x10030] = pattern_scanner.find_val("83 7b ? <?> 75 ? 48 ? ? ? ? 83 ? ? 7d ? ")  # handle when opcode is lower than 0x7f
     pno[0x10031] = sorted(find_zone_down_switch_values(get_func(
-        pattern_scanner.find_address("89 4c 24 ? 48 ? ? ? 48 89 4c 24 ? 48 ? ? ? 0f ? ?")
+        pattern_scanner.find_address("89 4c 24 ? 48 ? ? ? 48 89 4c 24 ? 48 ? ? ? 0f ? ? 89 53 ?")
     ).start_ea).difference(pno[0x10030]))
     return pno
 
@@ -217,7 +217,7 @@ def _():
             res.extend(find_straight_ecx(ea_, max_lv - 1))
         return res
 
-    xrefs = find_xrefs_to(pattern_scanner.find_address("48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 8b ? 41 ? ? 48 ? ? ? ? ? ? 48 ? ? e8"))
+    xrefs = find_xrefs_to(pattern_scanner.find_address("48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 8b ? 41 ? ? 48 ? ? ? ? ? ? 48 ? ? e8 ? ? ? ? "))
     map_ = {}
     for ea in itertools.chain(xrefs.get(fl_CF, []), xrefs.get(fl_CN, []), xrefs.get(fl_JN, []), xrefs.get(fl_JF, [])):
         for ea_, t_ in find_straight_ecx(ea):
@@ -302,13 +302,13 @@ def _():
         "48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 83 3d ? ? ? ? ? 41 ? ? ? 48"
     )))
     pno[0x10025] = sorted(find_zone_down_switch_values(get_func(pattern_scanner.find_address(
-        "e8 ? ? ? ? 80 ? ? 48 ? ? 0f 84 ? ? ? ?"
+        "84 ? 74 ? 44 ? ? 48 ? ? b2 02"
     )).start_ea))
     pno[0x10026] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "48 89 6c 24 ? 48 89 74 24 ? 57 48 ? ? ? 83 3d ? ? ? ? ? 41 ? ? ? 48 ? ? 8b ?"
     )))
     pno[0x10073] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "8b ? 48 ? ? ? ? ? ? e8 ? ? ? ? 80 ? ? 48 ? ? 74 ? 48 ? ?"
+        "84 ? 74 ? 44 ? ? 48 ? ? b2 06"
     )))
     pno[0x10024] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "4c 89 70 ? 44 ? ? 89 74 24 ?"
@@ -611,6 +611,7 @@ def _():
 
 @opcode(0x10049)
 def _():
+    return [] # seems not used in 7.2
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 0f ? ? ? 0f ? ? ? f6"
     )))
@@ -691,7 +692,7 @@ def _():
 def _():
     pno = {
         0x10028: sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-            "40 ? 55 56 57 41 ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? 41 ? ? ? 48"
+            "41 ? ? e8 * * * * b0 ? 48 ? ? ? ? 48 ? ? ? ? 48 ? ? ?"
         )))
     }
     pno[0x1005E] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
@@ -745,7 +746,7 @@ def _():
 @opcode(0x1002C)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "4c ? ? 55 41 ? 49 ? ? ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 45 ? 49 89 5b ? 45 ? ?"
+        "0f 85 ? ? ? ? 49 ? ? 48 ? ? 48 ? ? ? ? 48 ? ? ? 5f e9 * * * *"
     )))
 
 
