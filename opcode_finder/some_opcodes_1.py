@@ -51,10 +51,12 @@ def _():
     pno = {}
     ea = pattern_scanner.find_address('48 89 9c 24 ? ? ? ? 48 ? ? ? 48 ? ? 74 ? 41')
     pno[0x1002F] = trace_small_switch(ea),
+    try:
+        ea = pattern_scanner.find_address('41 ? ? ? ? 48 ? ? b9 ? ? ? ? 49 ? ? 8b ?')
+    except KeyError:
+        ea = pattern_scanner.find_address('44 ? ? ? ? 48 ? ? 8b ? 41 ? ? ? ? ? ? 74 ?')
     pno[0x30002] = sorted(
-        v for v in find_zone_down_switch_values(
-            pattern_scanner.find_address('44 ? ? ? ? 48 ? ? 8b ? 41 ? ? ? ? ? ? 74 ? ')
-        ) if v not in pno[0x1002F]
+        v for v in find_zone_down_switch_values(ea) if v not in pno[0x1002F]
     )
     return pno
 
