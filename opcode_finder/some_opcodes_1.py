@@ -284,7 +284,7 @@ def _():
                         case v:
                             raise Exception(f'Unknown CreateObject type {v}')
                     break
-    pno[0x10013] = sorted(find_zone_down_switch_values(pattern_scanner.find_address("48 89 5c 24 ? 57 48 ? ? ? f6 42 ? ? 48 ? ? 0f")))
+    pno[0x10013] = sorted(find_zone_down_switch_values(pattern_scanner.find_address("83 3d ? ? ? ? ? 0f 84 ? ? ? ? e8 ? ? ? ? 84 ? 75 ?")))
     return pno
 
 
@@ -312,9 +312,9 @@ def _():
     pno[0x10073] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "84 ? 74 ? 44 ? ? 48 ? ? b2 06"
     )))
-    pno[0x10024] = sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "4c 89 70 ? 44 ? ? 89 74 24 ?"
-    )).difference(
+    pno[0x10024] = sorted(find_zone_down_switch_values(get_func(pattern_scanner.find_address(
+        "84 ? ? ? ? 0f ? ? 48 ? ? ? ? ? ? e8 ? ? ? ? 0f ? ? ? 8b ? ? ?"
+    )).start_ea).difference(
         pno[0x10027]
     ).difference(
         pno[0x10025]
@@ -330,10 +330,7 @@ def _():
 @opcode(0x1006F)
 def _():
     pno = {}
-    try:
-        extend_status = pattern_scanner.find_address("48 89 74 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90 ? ? ? ?")  # 7.1
-    except KeyError:
-        extend_status = pattern_scanner.find_address("48 89 5c 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90 ? ? ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90 ? ? ? ? 48 ? ? 48 ? ? e8 ? ? ? ? 48 ? ? 48 ? ?")  # 7.0
+    extend_status = get_func(pattern_scanner.find_address("74 ? 48 ? ? 48 ? ? ff 90 ? ? ? ? 4c ? ? ? ? ? ? 48")).start_ea  # 7.3
     status_funcs = set(pattern_scanner.find_addresses("48 89 5c 24 ? 57 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 ? ? 74 ? 48 ? ? 48 ? ? ff 90"))
     normal_status_func = status_funcs.difference({extend_status})
     assert len(normal_status_func) == 1, 'normal_status_func len != 1'
@@ -480,7 +477,7 @@ def _():
 
 @opcode(0x1005F)
 def _():
-    ea = get_func(pattern_scanner.find_address("48 ? ? 48 ? ? ? 49 89 7b ? 4d 89 73")).start_ea
+    ea = get_func(pattern_scanner.find_address("48 ? ? ? 48 ? ? 48 ? ? ff 90 ? ? ? ? 48 ? ? ? ? ? ? 41")).start_ea
     return sorted(find_zone_down_switch_values(ea, 20)) or [
         trace_small_switch(xref.frm)
         for xref in XrefsTo(ea, 0)
@@ -490,7 +487,7 @@ def _():
 
 @opcode(0x10060)
 def _():
-    ea = get_func(pattern_scanner.find_address("48 ? ? 48 ? ? ? 49 89 7b ? 4d 89 73")).start_ea
+    ea = get_func(pattern_scanner.find_address("48 ? ? 48 ? ? ? 49 89 7b ? 4d 89 73 ? 4c ? ? 48")).start_ea
     return sorted(find_zone_down_switch_values(ea, 20)) or [
         trace_small_switch(xref.frm)
         for xref in XrefsTo(ea, 0)
@@ -521,7 +518,7 @@ def _():
 @opcode(0x30008)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "e8 ? ? ? ? 0f ? ? ? 48 ? ? ? 44 ? ? ? ? 44 ? ? ? 48 ? ? ?"
+        "e8 ? ? ? ? 0f ? ? ? 48 ? ? ? 0f ? ? ? 44 ? ? ? 44"
     )))
 
 
@@ -535,7 +532,7 @@ def _():
 @opcode(0x10071)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "40 ? 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? e8 ? ? ? ? 48 ? ? 74 ? 4c ? ? 48 ? ? 41 ff 90 ? ? ? ? 48 ? ? 33 ? e8 ? ? ? ? 48 ? ? 74 ? 44 ? ? ? ? 4c ? ? ? 8b ?"
+        "48 89 7c 24 ? 41 ff 90 ? ? ? ? 48 ? ? 33 ?"
     )))
 
 
@@ -570,7 +567,7 @@ def _():
 @opcode(0x10021)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "80 79 ? ? 0f ? ? 48 ? ? ? ? ? ? 41 ? ? ?"
+        "80 79 ? ? 0f ? ? 48 ? ? ? ? ? ? 41 ? ? ? e9"
     )))
 
 
@@ -636,7 +633,7 @@ def _():
 @opcode(0x1003F)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "40 ? 41 ? 48 ? ? ? ? ? ? 48 ? ? 8b ? 48"
+        "45 ? ? f6 40 ? ? 0f 29 b4 24"
     )))
 
 
@@ -741,7 +738,7 @@ def _():
 @opcode(0x10055)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "40 ? 56 41 ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? c6 81"
+        "4c ? ? 48 ? ? ? 48 ? ? 75 ? 48 ? ? ff 50 ?"
     )))
 
 
@@ -796,7 +793,7 @@ def _():
 @opcode(0x1004E)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        " 40 ? 56 41 ? 48 ? ? 48 ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 45 ? 48 ? ? ? ? ? ? 4c "
+        "48 ? ? 48 89 45 ? 48 ? ? ? ? ? ? 48 ? ? e8 ? ? ? ? 4c ? ? 48 ? ? 0f 84 ? ? ? ? 48"
     )))
 
 
@@ -810,7 +807,7 @@ def _():
 @opcode(0x1001F)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "44 ? ? ? f3 ? ? ? ? ? ? ? 49 ? ? ? 49"
+        "44 ? ? ? f3 ? ? ? ? ? ? ? 49 ? ? ? 49 ? ? ? 4c"
     )))
 
 
@@ -850,7 +847,7 @@ def _():
 @opcode(0x30003)
 def _():
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
-        "4c ? ? 44 ? ? 8b ? e8 ? ? ? ? 48 ? ? ? ? 48 ? ? ? ? 48 ? ? ? ? 48 ? ? ?"
+        "48 ? ? 48 89 45 ? 49 ? ? 4c 89 4d ?"
     )))
 
 
@@ -1038,7 +1035,7 @@ def init_send_funcs():
     global send_game_packet_immediate, send_game_packet, send_info_packet, send_system_packet, push_send_packet, is_init_send_funcs
     if is_init_send_funcs: return
     send_game_packet_immediate, send_game_packet = pattern_scanner.find_val(
-        "48 89 6c 24 ? 44 38 84 24 ? ? ? ? 74 ? e8 * * * * eb 05 e8 * * * *"
+        "66 89 5c 24 ? 48 89 6c 24 ? 44 38 84 24 ? ? ? ? 74 ? e8 * * * * eb 05 e8 * * * *"
     )
     send_info_packet, = pattern_scanner.find_val("e8 * * * * 84 ? 74 ? 48 ? ? ? ? ? ? 48 c7 83")
     send_system_packet, = pattern_scanner.find_val("e8 * * * * 48 ? ? ? ? ? ? 80 78 ? ? 74 ? c7")
@@ -1195,26 +1192,20 @@ def _():
 
 @opcode(0x20010)
 def _():
-    try:
-        a, = pattern_scanner.find_val("45 ? ? 66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * *")  # 7.1
-    except KeyError:
-        a, = pattern_scanner.find_val("66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * * 8b ? ? ? ? ? ?")  # 7.0
+    a = get_func(pattern_scanner.find_address("41 ? ? ? 48 ? ? ? ? ? ? 41 ? ? 0f ? ? e8 ? ? ? ? 4c ? ? 48 ? ? 0f 84")).start_ea  # 7.3
     return analyze_send_function(a, send_game_packet)
 
 
 @opcode(0x20001)
 def _():
-    try:
-        a, = pattern_scanner.find_val("66 89 4c 24 ? 0f ? ? 48 ? ? ? ? e8 * * * *")  # 7.1
-    except KeyError:
-        a, = pattern_scanner.find_val("66 89 4c 24 ? 48 ? ? ? ? ? ? ? e8 * * * * e9")  # 7.0
+    a = get_func(pattern_scanner.find_address("41 ? ? 0f ? ? e8 ? ? ? ? 4c ? ? 48 ? ? 74")).start_ea  # 7.3
     return analyze_send_function(a, send_game_packet)
 
 
 @opcode(0x2001E)
 def _():
     return analyze_send_function(
-        pattern_scanner.find_val("48 89 44 24 ? f3 0f 11 44 24 ? f3 0f 11 4c 24 ? e8 * * * *")[0],
+        pattern_scanner.find_val("48 89 44 24 ? f3 0f 11 44 24 ? f3 0f 11 4c 24 ? e8 * * * * 48")[0],
         push_send_packet
     )
 
@@ -1222,7 +1213,7 @@ def _():
 @opcode(0x20002)
 def _():
     return analyze_send_function(
-        pattern_scanner.find_val("e8 * * * * 66 c7 47 ? ? ? eb")[0],
+        pattern_scanner.find_val("b9 ? ? ? ? e8 * * * * 66 66 0f 1f 84 00 ? ? ? ?")[0],
         send_game_packet
     )
 
