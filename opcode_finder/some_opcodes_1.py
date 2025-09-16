@@ -596,7 +596,7 @@ def _():
 def _():
     return sorted(itertools.chain(
         *map(find_zone_down_switch_values, pattern_scanner.find_addresses(
-            "40 ? 56 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? e8"
+            "40 ? 41 ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? e8 ? ? ? ? 4c ? ?"
         )),
     ))
 
@@ -610,7 +610,7 @@ def _():
 
 @opcode(0x10049)
 def _():
-    return [] # seems not used in 7.2
+    return []  # seems not used in 7.2
     return sorted(find_zone_down_switch_values(pattern_scanner.find_address(
         "48 89 5c 24 ? 48 89 74 24 ? 57 48 ? ? ? 0f ? ? ? 0f ? ? ? f6"
     )))
@@ -1270,3 +1270,19 @@ def _():
         pattern_scanner.find_address("40 ? 48 ? ? ? ? ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 84 24 ? ? ? ? 48 ? ? 48 ? ? ? ? ? ? e8 ? ? ? ? 48 ? ? 74 ? 8b"),
         send_info_packet
     )
+
+
+@opcode(range(0x10074, 0x10076 + 1))
+def _():
+    pno = {}
+    for ea, (val,) in pattern_scanner.search("44 ? ? ? ? ? b3 ? 44 ? ? ? ? ? 0f ? ? ? <?>"):
+        match val:
+            case 0x12:
+                pno[0x10074] = find_zone_down_switch_values(ea)
+            case 0x22:
+                pno[0x10075] = find_zone_down_switch_values(ea)
+            case 0x32:
+                pno[0x10076] = find_zone_down_switch_values(ea)
+            case _:
+                raise ValueError(f"Unexpected value {hex(val)} at {hex(ea)}")
+    return pno

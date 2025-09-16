@@ -83,6 +83,11 @@ names = {
     "CountdownCancel": 0X10071,
     "RSF": 0X10063,
 
+    "MapEffect": 0X10016,
+    "MapEffect4": 0x10074,
+    "MapEffect8": 0x10075,
+    "MapEffect12": 0x10076,
+
     # up
     "ChatHandler": 0X2001E,
     "ClientTrigger": 0X20002,
