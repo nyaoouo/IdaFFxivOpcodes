@@ -67,7 +67,7 @@ def parse_one(identifier):
 def parse_all():
     res = {i: parse_one(i) for i in _opcode_finders.keys()}  # maybe use multithread or multiprocessing...
     game_version, game_build_date = get_game_info()
-    export_dir = pathlib.Path(__file__).parent.parent / f"opcodes_{''.join(str(i) for i in game_version)}_{game_build_date}"
+    export_dir = pathlib.Path(__file__).parent.parent / "parsed_opcodes" / f"opcodes_{''.join(str(i) for i in game_version)}_{game_build_date}"
     export_dir.mkdir(exist_ok=True, parents=True)
     for key, names in _names.items():
         with open(export_dir / f'{key}.txt', 'w', encoding='utf-8') as f:
