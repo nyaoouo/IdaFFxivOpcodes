@@ -46,18 +46,18 @@ def _():
 
 
 @opcode(0x1002F)
-@opcode(0x30002)
+# @opcode(0x30002)
 def _():
     pno = {}
     ea = pattern_scanner.find_address('48 89 9c 24 ? ? ? ? 48 ? ? ? 48 ? ? 74 ? 41')
     pno[0x1002F] = trace_small_switch(ea),
-    try:
-        ea = pattern_scanner.find_address('41 ? ? ? ? 48 ? ? b9 ? ? ? ? 49 ? ? 8b ?')
-    except KeyError:
-        ea = pattern_scanner.find_address('44 ? ? ? ? 48 ? ? 8b ? 41 ? ? ? ? ? ? 74 ?')
-    pno[0x30002] = sorted(
-        v for v in find_zone_down_switch_values(ea) if v not in pno[0x1002F]
-    )
+    # try:
+    #     ea = pattern_scanner.find_address('41 ? ? ? ? 48 ? ? b9 ? ? ? ? 49 ? ? 8b ?')
+    # except KeyError:
+    #     ea = pattern_scanner.find_address('44 ? ? ? ? 48 ? ? 8b ? 41 ? ? ? ? ? ? 74 ?')
+    # pno[0x30002] = sorted(
+    #     v for v in find_zone_down_switch_values(ea) if v not in pno[0x1002F]
+    # )
     return pno
 
 
@@ -196,7 +196,7 @@ def _():
     except KeyError:
         pno[0x10030] = pattern_scanner.find_val("83 7b ? <?> 75 ? 48 ? ? ? ? 83 ? ? 7d ? ")  # handle when opcode is lower than 0x7f
     pno[0x10031] = sorted(find_zone_down_switch_values(get_func(
-        pattern_scanner.find_address("89 4c 24 ? 48 ? ? ? 48 89 4c 24 ? 48 ? ? ? 0f ? ? 89 53 ?")
+        pattern_scanner.find_address("0f ? ? 89 53 ? 48 ? ? ? 48 ? ?")
     ).start_ea).difference(pno[0x10030]))
     return pno
 
