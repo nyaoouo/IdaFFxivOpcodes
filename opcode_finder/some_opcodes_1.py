@@ -885,11 +885,22 @@ def _():
         "40 ? 53 41 ? 41 ? 41 ? 48 ? ? ? ? ? ? ? b8"
     )).start_ea))
 
+
+# @opcode(0x10077)
+# def _():
+#     return sorted(find_zone_down_switch_values(get_func(pattern_scanner.find_address(
+#         "48 89 45 ? 4c ? ? ? ? ? ? 48 ? ? ? 48 ? ? 48 ? ? ? e8"
+#     )).start_ea))
+
 @opcode(0x10077)
 def _():
-    return sorted(find_zone_down_switch_values(get_func(pattern_scanner.find_address(
-        "48 89 45 ? 4c ? ? ? ? ? ? 48 ? ? ? 48 ? ? 48 ? ? ? e8"
-    )).start_ea))
+    c_, = pattern_scanner.find_val("ff 92 ? ? ? ? 0f ? ? ? ? ? ? 48 ? ? e8 * * * * 48 ? ? ? 48")
+    for a, (c,) in pattern_scanner.search("74 ? 48 ? ? 48 ? ? ff 92 ? ? ? ? 0f ? ? 48 ? ? e8 * * * *"):
+        if c == c_:
+            break
+    else:
+        raise Exception("not found")
+    return sorted(find_zone_down_switch_values(get_func(a).start_ea))
 
 
 def find_event_packets(func_ea, sender):

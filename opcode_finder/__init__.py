@@ -61,7 +61,9 @@ def parse_one(identifier):
         o = o[identifier]
         if not isinstance(o, int) and len(o) == 0:
             logging.error(f'opcode {identifier:#x} not found')
-    return (o,) if isinstance(o, int) else tuple(o)
+    o = (o,) if isinstance(o, int) else tuple(o)
+    # print(f'[+] found {identifier:#X}: {", ".join(f"0x{i:X}" for i in o)}')
+    return o
 
 
 def parse_all():
