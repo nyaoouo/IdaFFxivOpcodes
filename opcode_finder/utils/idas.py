@@ -27,7 +27,7 @@ def big_switch_replay():
 
 @cache
 def big_switch_zone_down():
-    _func = get_func(pattern_scanner.find_address("45 ? ? ? ? 4d ? ? 44 ? ? 48 ? ?"))
+    _func = get_func(pattern_scanner.find_address("48 ? ? 48 ? ? ? ? ? ? 48 ? ? 48 89 85 ? ? ? ? 45 ? ? ? ? 4d ? ?"))
     return range(_func.start_ea, _func.end_ea)
 
 
